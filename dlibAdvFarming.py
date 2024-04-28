@@ -23,7 +23,10 @@ def update_image_count(txt_file, user_id, user_name, count):
         with open(txt_file, 'w') as file:
             file.write(f"{user_id}:{user_name}:{count}\n")
 
+# Function to save landmarks to a file
+# Function to save landmarks to a file
 
+            
 # Function to capture images for a given user ID
 def capture_images(user_id):
     cam = cv2.VideoCapture(0)
@@ -32,6 +35,7 @@ def capture_images(user_id):
 
     # Initialize HOG face detector from dlib
     face_detector = dlib.get_frontal_face_detector()
+    # Initialize landmark predictor
 
     print(f"\n [INFO] Initializing face capture for user ID {user_id}. Look at the camera and wait ...")
 
@@ -71,14 +75,24 @@ def capture_images(user_id):
             # Save the captured image into the datasets folder
             face_img = gray[y:y+h, x:x+w]
             if len(face_img) > 0:
+                face_img_normalized = face_img / 255.0
                 # Resize image to 60x60
-                face_img_resized = cv2.resize(face_img, (60, 60))
-                cv2.imwrite(f"dataset/User.{user_id}.{count}.jpg", face_img_resized)
+                face_img_resized = cv2.resize(face_img_normalized, (60, 60))
+                # Multiply by 255 to get back to original scale
+                face_img_resized *= 255
+                # Save the image with proper filename
+                image_filename = f"dataset/{user_id}/User_{user_id}_{count}.jpg"
+                os.makedirs(os.path.dirname(image_filename), exist_ok=True)
+                cv2.imwrite(image_filename, face_img_resized)
+
+                # Detect landmarks
+                # Save landmarks to file
+
             cv2.imshow('image', img)
         k = cv2.waitKey(100) & 0xff # Press 'ESC' for exiting video
         if k == 27:
             break
-        elif newcount >= 30: # Take 30 face samples and stop video
+        elif newcount >= 150: # Take 30 face samples and stop video
              break
 
     # Update or create text file with updated image count and user name
