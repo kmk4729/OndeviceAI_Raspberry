@@ -92,7 +92,7 @@ def capture_images(user_id):
         k = cv2.waitKey(100) & 0xff # Press 'ESC' for exiting video
         if k == 27:
             break
-        elif newcount >= 150: # Take 30 face samples and stop video
+        elif newcount >= 20: # Take 30 face samples and stop video
              break
 
     # Update or create text file with updated image count and user name
