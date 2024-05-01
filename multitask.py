@@ -1,5 +1,7 @@
 import cv2
 import dlib
+import logging
+
 import numpy as np
 import tensorflow as tf
 import threading
@@ -14,7 +16,18 @@ config.gpu_options.allow_growth = True  # GPU 메모리 자동 증가 설정
 session = tf.compat.v1.Session(config=config)
 tf.compat.v1.keras.backend.set_epsilon(session)  # Keras에 TensorFlow 세션 설정
 
+# 학습 로그는 레벨 3로 설정하여 표시합니다.
+tf.get_logger().setLevel('INFO')
 # 함수 정의: 얼굴 인식 및 인식 결과를 화면에 표시하는 작업  
+def get_user_name_from_count_txt(index):
+    with open('count.txt', 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            parts = line.strip().split(':')
+            if parts[0] == str(index):
+                return parts[1]
+    return "Unknown"
+
 def update_image_count(txt_file, user_id, user_name, count):
     if os.path.exists(txt_file):
         with open(txt_file, 'r') as file:
@@ -82,121 +95,123 @@ def face_recognition():
                 label = np.argmax(probabilities)
                 
                 # 가장 높은 확률이 50% 미만인 경우
-                if probabilities[label] < 0.7:
-                    #user_id = input("Enter user ID: ")  # 사용자 ID 입력 받음
+                #user_id = input("Enter user ID: ")  # 사용자 ID 입력 받음
+                
+                # 해당 user_id에 해당하는 폴더에 30장의 사진 저장
+                if capture_switch==False:
+                    thread_capture = threading.Thread(target=input_key,args=(cap,detector,sw))
+                    thread_capture.start()
+                    capture_switch=True
+                #capture_images(user_id,cap,i)
+                
+                # 멀티스레딩으로 training 시작
+                if user_id_queue.qsize()==0:
+                    ret, frame = cap.read()
+
+                    # 그레이스케일로 변환
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+                    # 얼굴 감지
+                    faces = detector(gray)
+                    # 감지된 얼굴에 대해 예측
+                    for face in faces:
+                        # 얼굴 영역 추출
+                        x, y, w, h = face.left(), face.top(), face.width(), face.height()
+                        face_img = frame[y:y+h, x:x+w]  # 컬러 이미지로 변경
+
+                        # 이미지가 비어있지 않은 경우에만 resize
+                        if not face_img.size == 0:
+                            # 얼굴 이미지를 모델의 입력 형태로 변환
+                            face_img = cv2.resize(face_img, (60, 60))
+                            face_img = np.expand_dims(face_img, axis=0)
+                            face_img = np.expand_dims(face_img, axis=-1)
+                            # 모델을 사용하여 얼굴 분류
+                            prediction = model.predict(face_img)
+                            # softmax 활성화 함수를 사용하여 출력을 확률 분포로 변환
+                            probabilities = tf.nn.softmax(prediction[0]).numpy()
+
+                            # 가장 높은 확률을 가진 클래스의 인덱스를 가져옴
+                            label = np.argmax(probabilities)
+                            
+                            # 가장 높은 확률이 50% 미만인 경우
+                            confidence = probabilities[label] * 100  # 백분율로 변환
+                            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                            user_name = get_user_name_from_count_txt(label)
+
+                            cv2.putText(frame, f'{user_name}, Confidence: {confidence:.2f}%', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+                    # 화면에 출력
+                    cv2.imshow('Face Recognition', frame)
+
+                    # 종료 키 확인
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                else:
+                    capture_images(cap,detector,sw)
+                    thread_train_model = threading.Thread(target=train_model)
+                    thread_train_model.start()
+                    # train_model 스레드가 종료될 때까지 얼굴 감지 및 인식 반복
+                    while thread_train_model.is_alive():  
+                        # 웹캠에서 영상 캡처
+                            # 영상 프레임 읽기
+                            ret, frame = cap.read()
+
+                            # 그레이스케일로 변환
+                            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+                            # 얼굴 감지
+                            faces = detector(gray)
+
+                            # 감지된 얼굴에 대해 예측
+                            for face in faces:
+                                # 얼굴 영역 추출
+                                x, y, w, h = face.left(), face.top(), face.width(), face.height()
+                                face_img = frame[y:y+h, x:x+w]  # 컬러 이미지로 변경
+
+                                # 이미지가 비어있지 않은 경우에만 resize
+                                if not face_img.size == 0:
+                                    # 얼굴 이미지를 모델의 입력 형태로 변환
+                                    face_img = cv2.resize(face_img, (60, 60))
+                                    face_img = np.expand_dims(face_img, axis=0)
+                                    face_img = np.expand_dims(face_img, axis=-1)
+
+                                    # 모델을 사용하여 얼굴 분류
+                                    prediction = model.predict(face_img)
+
+                                    # softmax 활성화 함수를 사용하여 출력을 확률 분포로 변환
+                                    probabilities = tf.nn.softmax(prediction[0]).numpy()
+
+                                    # 가장 높은 확률을 가진 클래스의 인덱스를 가져옴
+                                    label = np.argmax(probabilities)
+                                    
+                                    # 가장 높은 확률이 50% 미만인 경우
+                                    confidence = probabilities[label] * 100  # 백분율로 변환
+                                    cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                                    user_name = get_user_name_from_count_txt(label)
+
+                                    cv2.putText(frame, f'{user_name}, Confidence: {confidence:.2f}%', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+                            # 화면에 출력
+                            cv2.imshow('Face Recognition', frame)
+
+                            # 종료 키 확인
+                            if cv2.waitKey(1) & 0xFF == ord('q'):
+                                break
                     
-                    # 해당 user_id에 해당하는 폴더에 30장의 사진 저장
-                    if capture_switch==False:
-                        thread_capture = threading.Thread(target=input_key,args=(cap,detector,sw))
-                        thread_capture.start()
-                        capture_switch=True
-                    #capture_images(user_id,cap,i)
-                    
-                    # 멀티스레딩으로 training 시작
-                    if thread_capture.is_alive():
-                        ret, frame = cap.read()
 
-                        # 그레이스케일로 변환
-                        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    # train_model 스레드가 종료된 후에 join()
+                    thread_train_model.join()  # training 스레드 종료 대기
+                    detector = dlib.get_frontal_face_detector()
+                    model = tf.keras.models.load_model('my_model/model1.keras')
 
-                        # 얼굴 감지
-                        faces = detector(gray)
+                    thread_capture.join()
+                    capture_switch=False
 
-                        # 감지된 얼굴에 대해 예측
-                        for face in faces:
-                            # 얼굴 영역 추출
-                            x, y, w, h = face.left(), face.top(), face.width(), face.height()
-                            face_img = frame[y:y+h, x:x+w]  # 컬러 이미지로 변경
-
-                            # 이미지가 비어있지 않은 경우에만 resize
-                            if not face_img.size == 0:
-                                # 얼굴 이미지를 모델의 입력 형태로 변환
-                                face_img = cv2.resize(face_img, (60, 60))
-                                face_img = np.expand_dims(face_img, axis=0)
-                                face_img = np.expand_dims(face_img, axis=-1)
-                                # 모델을 사용하여 얼굴 분류
-                                prediction = model.predict(face_img)
-                                print(thread_capture.is_alive())
-                                # softmax 활성화 함수를 사용하여 출력을 확률 분포로 변환
-                                probabilities = tf.nn.softmax(prediction[0]).numpy()
-
-                                # 가장 높은 확률을 가진 클래스의 인덱스를 가져옴
-                                label = np.argmax(probabilities)
-                                
-                                # 가장 높은 확률이 50% 미만인 경우
-                                confidence = probabilities[label] * 100  # 백분율로 변환
-                                cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                                cv2.putText(frame, f'UnKnown, Confidence: {confidence:.2f}%', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-
-                        # 화면에 출력
-                        cv2.imshow('Face Recognition', frame)
-
-                        # 종료 키 확인
-                        if cv2.waitKey(1) & 0xFF == ord('q'):
-                            break
-                    else:
-                        thread_capture.join()
-                        capture_images(cap,detector,sw)
-                        thread_train_model = threading.Thread(target=train_model)
-                        thread_train_model.start()
-                        # train_model 스레드가 종료될 때까지 얼굴 감지 및 인식 반복
-                        while thread_train_model.is_alive():  
-                            # 웹캠에서 영상 캡처
-                                # 영상 프레임 읽기
-                                ret, frame = cap.read()
-
-                                # 그레이스케일로 변환
-                                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-                                # 얼굴 감지
-                                faces = detector(gray)
-
-                                # 감지된 얼굴에 대해 예측
-                                for face in faces:
-                                    # 얼굴 영역 추출
-                                    x, y, w, h = face.left(), face.top(), face.width(), face.height()
-                                    face_img = frame[y:y+h, x:x+w]  # 컬러 이미지로 변경
-
-                                    # 이미지가 비어있지 않은 경우에만 resize
-                                    if not face_img.size == 0:
-                                        # 얼굴 이미지를 모델의 입력 형태로 변환
-                                        face_img = cv2.resize(face_img, (60, 60))
-                                        face_img = np.expand_dims(face_img, axis=0)
-                                        face_img = np.expand_dims(face_img, axis=-1)
-
-                                        # 모델을 사용하여 얼굴 분류
-                                        prediction = model.predict(face_img)
-
-                                        # softmax 활성화 함수를 사용하여 출력을 확률 분포로 변환
-                                        probabilities = tf.nn.softmax(prediction[0]).numpy()
-
-                                        # 가장 높은 확률을 가진 클래스의 인덱스를 가져옴
-                                        label = np.argmax(probabilities)
-                                        
-                                        # 가장 높은 확률이 50% 미만인 경우
-                                        confidence = probabilities[label] * 100  # 백분율로 변환
-                                        cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                                        cv2.putText(frame, f'Label: {label}, Confidence: {confidence:.2f}%', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-
-                                # 화면에 출력
-                                cv2.imshow('Face Recognition', frame)
-
-                                # 종료 키 확인
-                                if cv2.waitKey(1) & 0xFF == ord('q'):
-                                    break
-                        
-
-                        # train_model 스레드가 종료된 후에 join()
-                        thread_train_model.join()  # training 스레드 종료 대기
-                        # 얼굴 인식 중지
+                    # 얼굴 인식 중지
                         
                 # 분류 결과와 해당 클래스의 확률을 화면에 표시
                 confidence = probabilities[label] * 100  # 백분율로 변환
                 cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                if probabilities[label] >= 0.7:
-
-                    cv2.putText(frame, f'Label: {label}, Confidence: {confidence:.2f}%', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-
         # 화면에 출력
         cv2.imshow('Face Recognition', frame)
 
@@ -209,6 +224,7 @@ def face_recognition():
     cv2.destroyAllWindows()
 
 def input_key(cap,detector,sw):
+    sw=False
     id = input("Enter user ID: ")
     user_id_queue.put(id)
     sw=True
@@ -288,6 +304,7 @@ def capture_images(cap, detector,sw):
 
     # Do a bit of cleanup
     print(f"\n [INFO] Exiting face capture for user ID {user_id} and cleaning up")
+    
 
 
 # 함수 정의: 모델 학습
@@ -355,7 +372,7 @@ def train_model():
     history = model.fit(
         augmented_train_generator,
         steps_per_epoch=train_images.shape[0] // batch_size,
-        epochs=3,
+        epochs=1,
         validation_data=(test_images, test_labels)
     )
 
