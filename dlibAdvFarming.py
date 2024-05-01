@@ -77,13 +77,13 @@ def capture_images(user_id):
             if len(face_img) > 0:
                 face_img_normalized = face_img / 255.0
                 # Resize image to 60x60
-                face_img_resized = cv2.resize(face_img_normalized, (60, 60))
-                # Multiply by 255 to get back to original scale
-                face_img_resized *= 255
-                # Save the image with proper filename
-                image_filename = f"dataset/{user_id}/User_{user_id}_{count}.jpg"
-                os.makedirs(os.path.dirname(image_filename), exist_ok=True)
-                cv2.imwrite(image_filename, face_img_resized)
+                if not face_img_normalized.size == 0:
+                    face_img_resized = cv2.resize(face_img_normalized, (60, 60))
+                    face_img_resized *= 255
+                    image_filename = f"dataset/{user_id}/User_{user_id}_{count}.jpg"
+                    os.makedirs(os.path.dirname(image_filename), exist_ok=True)
+                    cv2.imwrite(image_filename, face_img_resized)
+                    print(f"{newcount}th picture is saved ...")
 
                 # Detect landmarks
                 # Save landmarks to file
@@ -92,7 +92,7 @@ def capture_images(user_id):
         k = cv2.waitKey(100) & 0xff # Press 'ESC' for exiting video
         if k == 27:
             break
-        elif newcount >= 20: # Take 30 face samples and stop video
+        elif newcount >= 200: # Take 30 face samples and stop video
              break
 
     # Update or create text file with updated image count and user name
