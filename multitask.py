@@ -201,7 +201,6 @@ def face_recognition():
 
                     # train_model 스레드가 종료된 후에 join()
                     thread_train_model.join()  # training 스레드 종료 대기
-                    detector = dlib.get_frontal_face_detector()
                     model = tf.keras.models.load_model('my_model/model1.keras')
 
                     thread_capture.join()
@@ -284,6 +283,8 @@ def capture_images(cap, detector,sw):
                     image_filename = f"dataset/{user_id}/User_{user_id}_{count}.jpg"
                     os.makedirs(os.path.dirname(image_filename), exist_ok=True)
                     cv2.imwrite(image_filename, face_img_resized)
+                    print(f"{newcount}th picture is saved ...")
+
                     # Detect landmarks
                     # Save landmarks to fil
                 
@@ -296,7 +297,7 @@ def capture_images(cap, detector,sw):
         k = cv2.waitKey(100) & 0xff # Press 'ESC' for exiting video
         if k == 27:
             break
-        elif newcount >= 10: # Take 30 face samples and stop video
+        elif newcount >= 100: # Take 30 face samples and stop video
              break
 
     # Update or create text file with updated image count and user name
@@ -372,7 +373,7 @@ def train_model():
     history = model.fit(
         augmented_train_generator,
         steps_per_epoch=train_images.shape[0] // batch_size,
-        epochs=1,
+        epochs=10,
         validation_data=(test_images, test_labels)
     )
 
