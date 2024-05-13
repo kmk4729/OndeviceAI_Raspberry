@@ -48,8 +48,9 @@ while (webcam.isOpened()):
                     file.write(f"{x} {y}\n")
 
                     cv2.circle(gray_image, (x, y), 1, (255, 255, 255), -1)           
+            if cv2.waitKey(1) & 0xFF == ord('q'):
 
-            count+=1
+                count+=1
 
             cv2.imwrite(image_filename, gray_image)
 
