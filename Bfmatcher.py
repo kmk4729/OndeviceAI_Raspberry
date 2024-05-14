@@ -8,6 +8,8 @@ while(count<10):
     img2 = cv2.imread(f'testdata/test2/test{count}.jpg')
     file_path1=f"testdata/test1/land0.txt"
     file_path2=f"testdata/test2/land{count}.txt"
+    image_path=f"testdata/test3/land{count}.jpg"
+
     maxlandx=-1
     minlandx=350
     maxlandy=-1
@@ -62,7 +64,7 @@ while(count<10):
 
     retval, mask = cv2.findHomography(numland1, numland2, cv2.RANSAC)
     h, w = 240,320
-    print(f"max : {maxlandx}, may : {maxlandy}, mix : {minlandx}, miy : {minlandy}")
+    #print(f"max : {maxlandx}, may : {maxlandy}, mix : {minlandx}, miy : {minlandy}")
     H_inv =  np.linalg.inv(retval)
     img4 = cv2.warpPerspective(img2, H_inv, (w, h))
     numland3 = cv2.warpPerspective(numland2, H_inv, (w, h))
@@ -70,15 +72,19 @@ while(count<10):
     img6 = img4[87:202,101:210]
 
     result1 = cv2.hconcat([img1,img4])
-    result2 = cv2.hconcat([ img2,img4])
-    result3 = cv2.hconcat([ img5,img6])
+    result2 = cv2.hconcat([img2,img4])
+    result3 = cv2.hconcat([img5,img6])
 
     #cv2.imshow('res1', result1)
     #cv2.imshow('res', img2)
     resultresult = cv2.vconcat([result1,result2])
-    cv2.imshow('res4', result3)
+    #cv2.imshow('res4', result3)
 
-    cv2.imshow('res3', resultresult)
+    #cv2.imshow('res3', resultresult)
+    face_img_resized = cv2.resize(img6, (60, 60))
+
+    cv2.imwrite(image_path, face_img_resized)
+
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     count+=1
