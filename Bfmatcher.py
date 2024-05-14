@@ -4,11 +4,14 @@ import numpy as np
 # 이미지 불러오기
 count=0
 while(count<10):
-    img1 = cv2.imread(f'dataset/test1/test{count}.jpg')
+    img1 = cv2.imread(f'dataset/test1/test0.jpg')
     img2 = cv2.imread(f'dataset/test2/test{count}.jpg')
-    file_path1=f"dataset/test1/land{count}.txt"
+    file_path1=f"dataset/test1/land0.txt"
     file_path2=f"dataset/test2/land{count}.txt"
-
+    maxlandx=-1
+    minlandx=350
+    maxlandy=-1
+    minlandy=250
     # SIFT 특징점 추출기 생성
 
     # 각 이미지에서 특징점 검출 및 디스크립터 계산
@@ -43,10 +46,15 @@ while(count<10):
     print("")
     print(land2)
     """
+    
     for i in range(68):
         
         # 두 점 사이에 선 그리기
         pt1 = (int(land1[i][0]), int(land1[i][1]))
+        maxlandx=max(maxlandx,pt1[0])
+        minlandx=min(minlandx,pt1[0])
+        maxlandy=max(maxlandy,pt1[1])
+        minlandy=min(minlandy,pt1[1])
         pt2 = (int(land2[i][0]) + 320, int(land2[i][1]))
         cv2.line(result, pt1, pt2, (0, 255, 0), 1)
     numland1 = np.array(land1, dtype=np.float32)
@@ -54,17 +62,21 @@ while(count<10):
 
     retval, mask = cv2.findHomography(numland1, numland2, cv2.RANSAC)
     h, w = 240,320
-
+    print(f"max : {maxlandx}, may : {maxlandy}, mix : {minlandx}, miy : {minlandy}")
     H_inv =  np.linalg.inv(retval)
     img4 = cv2.warpPerspective(img2, H_inv, (w, h))
+    numland3 = cv2.warpPerspective(numland2, H_inv, (w, h))
+    img5 = img1[87:202,101:210]
+    img6 = img4[87:202,101:210]
 
-    # 결과 출력
-    #cv2.imshow('Matches', result)
     result1 = cv2.hconcat([img1,img4])
     result2 = cv2.hconcat([ img2,img4])
+    result3 = cv2.hconcat([ img5,img6])
+
     #cv2.imshow('res1', result1)
     #cv2.imshow('res', img2)
     resultresult = cv2.vconcat([result1,result2])
+    cv2.imshow('res4', result3)
 
     cv2.imshow('res3', resultresult)
     cv2.waitKey(0)
