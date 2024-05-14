@@ -35,8 +35,8 @@ while (webcam.isOpened()):
         for det in dets:
             # 얼굴 경계 상자 그리기
             cv2.rectangle(img, (det.left(), det.top()), (det.right(), det.bottom()), (255, 0, 0), 2)
-            land_filename = f"dataset/test2/land{count}.txt"
-            image_filename = f"dataset/test2/test{count}.jpg"
+            land_filename = f"testdata/test2/land{count}.txt"
+            image_filename = f"testdata/test2/test{count}.jpg"
 
             # 얼굴 랜드마크 검출
             landmarks = predictor(gray_image, det)

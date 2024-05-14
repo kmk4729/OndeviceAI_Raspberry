@@ -4,10 +4,10 @@ import numpy as np
 # 이미지 불러오기
 count=0
 while(count<10):
-    img1 = cv2.imread(f'dataset/test1/test0.jpg')
-    img2 = cv2.imread(f'dataset/test2/test{count}.jpg')
-    file_path1=f"dataset/test1/land0.txt"
-    file_path2=f"dataset/test2/land{count}.txt"
+    img1 = cv2.imread(f'testdata/test1/test0.jpg')
+    img2 = cv2.imread(f'testdata/test2/test{count}.jpg')
+    file_path1=f"testdata/test1/land0.txt"
+    file_path2=f"testdata/test2/land{count}.txt"
     maxlandx=-1
     minlandx=350
     maxlandy=-1
