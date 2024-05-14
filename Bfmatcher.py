@@ -81,7 +81,7 @@ while(count<10):
     #cv2.imshow('res4', result3)
 
     #cv2.imshow('res3', resultresult)
-    face_img_resized = cv2.resize(img6, (60, 60))
+    face_img_resized = cv2.resize(img6, (224, 224))
 
     cv2.imwrite(image_path, face_img_resized)
 
