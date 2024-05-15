@@ -1,110 +1,78 @@
-
-import tensorflow as tf
-# 모델 불러오기
-import dlib
 import cv2
-import time
-import os
-from joblib import load
+import dlib
 import numpy as np
-from sklearn.model_selection import train_test_split
-from tensorflow.keras import layers, models
-from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from sklearn.svm import SVC
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from joblib import dump
-model = tf.keras.models.load_model('my_model/model1_mobilenet.keras')
-def extract_features(model, images):
-    features = model.predict(images)
-    return features
-# 저장된 SVM 모델 로드
+from joblib import load
+
+# SVM 모델 로드
 svm_model = load('svm_model.joblib')
+
 # dlib의 얼굴 검출기 생성
 detector = dlib.get_frontal_face_detector()
 # 얼굴 랜드마크 검출기 생성
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-file_path1=f"land0.txt"
-land1=[]
-land2=[]
-if os.path.exists(file_path1):
-            with open(file_path1, 'r') as file1:
-                lines1 = file1.readlines()
-            for line1 in lines1:
-                land1.append((int(line1.split(" ")[0]),int(line1.split(" ")[1])))
-numland1 = np.array(land1, dtype=np.float32)
+predictor = dlib.shape_predictor('my_model/shape_predictor_68_face_landmarks.dat')
+# 얼굴 인식 모델 생성
+facerec = dlib.face_recognition_model_v1('my_model/dlib_face_recognition_resnet_model_v1.dat')
+
+def find_faces(img):
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # BGR 이미지를 RGB로 변환
+    dets = detector(img_rgb, 1)
+    if len(dets) == 0:
+        return np.empty(0), np.empty(0), np.empty(0)
+    
+    rects, shapes = [], []
+    shapes_np = np.zeros((len(dets), 68, 2), dtype=np.float64)
+    for k, d in enumerate(dets):
+        rect = ((d.left(), d.top()), (d.right(), d.bottom()))
+        rects.append(rect)
+
+        shape = predictor(img_rgb, d)
+        # convert dlib shape to numpy array
+        for i in range(0, 68):
+            shapes_np[k][i] = (shape.part(i).x, shape.part(i).y)
+
+        shapes.append(shape)
+    return rects, shapes, shapes_np
+
+def encode_faces(img, shapes):
+    face_descriptors = []
+    for shape in shapes:
+        face_descriptor = facerec.compute_face_descriptor(img, shape)
+        face_descriptors.append(np.array(face_descriptor))
+
+    return np.array(face_descriptors)
 
 # 웹캠 열기
-webcam = cv2.VideoCapture(0)
-webcam.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-webcam.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
-
-
-# dlib의 얼굴 감지기 초기화
-detector = dlib.get_frontal_face_detector()
-
-# 웹캠에서 영상 캡처
 cap = cv2.VideoCapture(0)
-
-while (webcam.isOpened()):
-    ret, img = webcam.read()
-    if ret == True:
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    # 얼굴 검출
+    rects, shapes, _ = find_faces(frame)
+    
+    for shape in shapes:
+        # 얼굴 특징 벡터 추출
+        face_descriptor = encode_faces(frame, [shape])[0]
+        label = svm_model.predict([face_descriptor])[0]
+        proba = svm_model.decision_function([face_descriptor])[0]
+        confidence = np.max(proba)
+        # SVM 모델을 사용하여 얼굴 인식
         
-        # RGB 이미지로 변환
-        #gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img2=img
         
-        # 얼굴 감지
-        dets, _, _ = detector.run(img2, 1, 0)
-        
-        for det in dets:
-            # 얼굴 경계 상자 그리기
-            land2=[]
-            cv2.rectangle(img, (det.left(), det.top()), (det.right(), det.bottom()), (255, 0, 0), 2)
+        # 화면에 얼굴 주변에 박스와 인식된 레이블 및 정확도 표시
+        cv2.rectangle(frame, (shape.rect.left(), shape.rect.top()), (shape.rect.right(), shape.rect.bottom()), (0, 255, 0), 2)
+        cv2.putText(frame, f'Label: {label}, Confidence: {confidence:.2f}', (shape.rect.left(), shape.rect.top()-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+    
+    # 화면에 표시
+    cv2.imshow('Face Recognition', frame)
+    
+    # 종료 조건
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
-            # 얼굴 랜드마크 검출
-            landmarks = predictor(img2, det)
-            # 얼굴 랜드마크 점 그리기
-            for i in range(68):
-                x = landmarks.part(i).x
-                y = landmarks.part(i).y
-                land2.append((x,y))
-                #file.write(f"{x} {y}\n")
-                #cv2.circle(gray_image, (x, y), 1, (255, 255, 255), -1)
-                             
-            numland2 = np.array(land2, dtype=np.float32)
-            retval, mask = cv2.findHomography(numland1, numland2, cv2.RANSAC)
-            h, w = 240,320
-            #print(f"max : {maxlandx}, may : {maxlandy}, mix : {minlandx}, miy : {minlandy}")
-            H_inv =  np.linalg.inv(retval)
-            img_homo = cv2.warpPerspective(img2, H_inv, (w, h))
-            face_img = img_homo[87:202,101:210]
-            if not face_img.size == 0:
-            # 얼굴 이미지를 모델의 입력 형태로 변환
-                face_img = cv2.resize(face_img, (60, 60))
-                face_img = np.expand_dims(face_img, axis=0)
-
-                # 모델을 사용하여 얼굴 분류
-                feature=extract_features(model, face_img)
-                # SVM 모델을 사용하여 얼굴 추가 인식
-                svm_prediction = svm_model.predict(feature)
-
-                # 분류 결과를 화면에 표시
-                label = np.argmax(svm_prediction)
-                confidence = np.max(svm_prediction)
-                cv2.putText(img, f'Label: {label}, Confidence: {confidence}', (det.left(), det.top()-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-
-
-# FPS 표시
-        
-        # 화면에 표시
-        cv2.imshow("WEBCAM", img)
-
-        # 종료 조건
-        if cv2.waitKey(1) == 27:
-            break
-
-
+# 웹캠 종료 및 창 닫기
 cap.release()
 cv2.destroyAllWindows()
