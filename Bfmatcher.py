@@ -6,7 +6,7 @@ count=0
 while(count<10):
     img1 = cv2.imread(f'testdata/test1/test0.jpg')
     img2 = cv2.imread(f'testdata/test2/test{count}.jpg')
-    file_path1=f"testdata/test1/land0.txt"
+    file_path1=f"land0.txt"
     file_path2=f"testdata/test2/land{count}.txt"
     image_path=f"testdata/test3/land{count}.jpg"
 
