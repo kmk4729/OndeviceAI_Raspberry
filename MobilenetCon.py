@@ -1,3 +1,5 @@
+
+
 import os
 import cv2
 import numpy as np
@@ -38,22 +40,6 @@ train_images, test_images, train_labels, test_labels = train_test_split(images, 
 # MobileNet을 불러옵니다. include_top=False로 설정하여 분류기를 제외합니다.
 base_model = MobileNetV2(weights=None, include_top=False, input_shape=(60, 60, 3))
 base_model.trainable = True
-
-# 모델 구축
-model = models.Sequential([
-    base_model,
-    layers.GlobalAveragePooling2D(),
-    layers.Dense(256, activation='relu'),
-    layers.Dropout(0.5),
-    layers.Dense(len(set(labels)), activation='softmax')  # 레이블 수에 맞춰 출력 노드 설정
-])
-
-# 모델 컴파일
-model.compile(optimizer='adam',
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
-
-# 데이터 증강을 위한 ImageDataGenerator 생성
 datagen = ImageDataGenerator(
     rotation_range=20,
     width_shift_range=0.1,
@@ -63,7 +49,7 @@ datagen = ImageDataGenerator(
     horizontal_flip=True,
     fill_mode='nearest'
 )
-#model = tf.keras.models.load_model('my_model/model1_mobilenet.keras')
+model = tf.keras.models.load_model('my_model/model1_mobilenet.keras')
 
 
 # 데이터 증강 후 모델 학습
