@@ -1,11 +1,21 @@
 import dlib
 import cv2
 import time
-
+import os
+import numpy as np
 # dlib의 얼굴 검출기 생성
 detector = dlib.get_frontal_face_detector()
 # 얼굴 랜드마크 검출기 생성
 predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+file_path1=f"land0.txt"
+land1=[]
+land2=[]
+if os.path.exists(file_path1):
+            with open(file_path1, 'r') as file1:
+                lines1 = file1.readlines()
+            for line1 in lines1:
+                land1.append((int(line1.split(" ")[0]),int(line1.split(" ")[1])))
+numland1 = np.array(land1, dtype=np.float32)
 
 # 웹캠 열기
 webcam = cv2.VideoCapture(0)
@@ -34,32 +44,33 @@ while (webcam.isOpened()):
         
         for det in dets:
             # 얼굴 경계 상자 그리기
+            land2=[]
             cv2.rectangle(img, (det.left(), det.top()), (det.right(), det.bottom()), (255, 0, 0), 2)
-            land_filename = f"testdata/test2/land{count}.txt"
-            image_filename = f"testdata/test2/test{count}.jpg"
+            image_filename = f"testdata/1/test{count}.jpg"
 
             # 얼굴 랜드마크 검출
             landmarks = predictor(gray_image, det)
             # 얼굴 랜드마크 점 그리기
-            with open(land_filename, 'w') as file:
-                for i in range(68):
-                    x = landmarks.part(i).x
-                    y = landmarks.part(i).y
-                    file.write(f"{x} {y}\n")
+            for i in range(68):
+                x = landmarks.part(i).x
+                y = landmarks.part(i).y
+                land2.append((x,y))
+                #file.write(f"{x} {y}\n")
+                #cv2.circle(gray_image, (x, y), 1, (255, 255, 255), -1)
+                             
+            numland2 = np.array(land2, dtype=np.float32)
+            retval, mask = cv2.findHomography(numland1, numland2, cv2.RANSAC)
+            h, w = 240,320
+            #print(f"max : {maxlandx}, may : {maxlandy}, mix : {minlandx}, miy : {minlandy}")
+            H_inv =  np.linalg.inv(retval)
+            img_homo = cv2.warpPerspective(gray_image, H_inv, (w, h))
+            img_slice = img_homo[87:202,101:210]
+            face_img_resized = cv2.resize(img_slice, (60, 60))
 
-                    cv2.circle(gray_image, (x, y), 1, (255, 255, 255), -1)           
-            if cv2.waitKey(1) & 0xFF == ord('q'):
 
-                count+=1
+            count+=1
 
-            cv2.imwrite(image_filename, gray_image)
-
-        # FPS 계산 및 표시
-        if time.time() - fps_start_time >= 1:
-            fps = fps_counter / (time.time() - fps_start_time)
-            fps_text = f"FPS: {fps:.2f}"
-            fps_counter = 0
-            fps_start_time = time.time()
+            cv2.imwrite(image_filename, face_img_resized)
             
         # FPS 표시
         
@@ -69,7 +80,7 @@ while (webcam.isOpened()):
         # 종료 조건
         if cv2.waitKey(1) == 27:
             break
-        if count >= 10: # Take 30 face samples and stop video
+        if count >= 300: # Take 30 face samples and stop video
              break
 
 # 리소스 해제
