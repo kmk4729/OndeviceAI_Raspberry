@@ -5,9 +5,20 @@ import dlib
 import cv2
 import time
 import os
-import numpy as np
 from joblib import load
-
+import numpy as np
+from sklearn.model_selection import train_test_split
+from tensorflow.keras import layers, models
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.svm import SVC
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from joblib import dump
+model = tf.keras.models.load_model('my_model/model1_mobilenet.keras')
+def extract_features(model, images):
+    features = model.predict(images)
+    return features
 # 저장된 SVM 모델 로드
 svm_model = load('svm_model.joblib')
 # dlib의 얼굴 검출기 생성
@@ -71,14 +82,13 @@ while (webcam.isOpened()):
             face_img = img_homo[87:202,101:210]
             if not face_img.size == 0:
             # 얼굴 이미지를 모델의 입력 형태로 변환
-                face_img = cv2.resize(face_img, (224, 224))
+                face_img = cv2.resize(face_img, (60, 60))
                 face_img = np.expand_dims(face_img, axis=0)
 
                 # 모델을 사용하여 얼굴 분류
-                prediction = model.predict(face_img)
-
+                feature=extract_features(model, face_img)
                 # SVM 모델을 사용하여 얼굴 추가 인식
-                svm_prediction = svm_model.predict(prediction)
+                svm_prediction = svm_model.predict(feature)
 
                 # 분류 결과를 화면에 표시
                 label = np.argmax(svm_prediction)
