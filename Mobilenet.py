@@ -32,7 +32,7 @@ for label in os.listdir(data_dir):
         # 이미지를 로드하고 크기를 조정합니다. (MobileNet 기본 입력 크기인 224x224로 조정)
         image_raw = cv2.imread(image_path)
         #image = cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY)
-        #image = cv2.resize(image, (60, 60))
+        image_raw = cv2.resize(image_raw, (224, 224))
         # 이미지 데이터를 리스트에 추가합니다.
         images.append(image_raw)
         # 레이블을 리스트에 추가합니다.
@@ -45,10 +45,10 @@ images = images / 255.0
 
 # 데이터를 학습 및 테스트 세트로 분할합니다.
 train_images, test_images, train_labels, test_labels = train_test_split(images, labels, test_size=0.2, random_state=42)
-train_images = np.expand_dims(train_images, axis=-1)
+#train_images = np.expand_dims(train_images, axis=-1)
 
 # MobileNet을 불러옵니다. include_top=False로 설정하여 분류기를 제외합니다.
-base_model = MobileNetV2(weights=None, include_top=False, input_shape=(224, 224, 3))
+base_model = MobileNetV2(weights=None, include_top=False, input_shape=(60, 60, 3))
 base_model.trainable = True
 
 # 모델 구축

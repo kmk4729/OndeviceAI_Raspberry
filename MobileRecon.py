@@ -68,7 +68,7 @@ while (webcam.isOpened()):
             face_img = img_homo[87:202,101:210]
             if not face_img.size == 0:
             # 얼굴 이미지를 모델의 입력 형태로 변환
-                face_img = cv2.resize(face_img, (224, 224))
+                face_img = cv2.resize(face_img, (60, 60))
                 face_img = np.expand_dims(face_img, axis=0)
 
                 # 모델을 사용하여 얼굴 분류
