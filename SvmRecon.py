@@ -4,7 +4,7 @@ import numpy as np
 from joblib import load
 
 # SVM 모델 로드
-svm_model = load('svm_model.joblib')
+svm_model = load('224svm_model.joblib')
 
 # dlib의 얼굴 검출기 생성
 detector = dlib.get_frontal_face_detector()
