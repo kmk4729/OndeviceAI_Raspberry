@@ -36,20 +36,20 @@ while (webcam.isOpened()):
         fps_counter += 1
         
         # RGB 이미지로 변환
-        gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        #gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         
         # 얼굴 감지
-        dets, _, _ = detector.run(gray_image, 1, 0)
+        dets, _, _ = detector.run(img, 1, 0)
         
         for det in dets:
             # 얼굴 경계 상자 그리기
             land2=[]
-            cv2.rectangle(img, (det.left(), det.top()), (det.right(), det.bottom()), (255, 0, 0), 2)
-            image_filename = f"testdata/1/test{count}.jpg"
+            #cv2.rectangle(img, (det.left(), det.top()), (det.right(), det.bottom()), (255, 0, 0), 2)
+            image_filename = f"224test/2/test{count}.jpg"
 
             # 얼굴 랜드마크 검출
-            landmarks = predictor(gray_image, det)
+            landmarks = predictor(img, det)
             # 얼굴 랜드마크 점 그리기
             for i in range(68):
                 x = landmarks.part(i).x
@@ -63,24 +63,25 @@ while (webcam.isOpened()):
             h, w = 240,320
             #print(f"max : {maxlandx}, may : {maxlandy}, mix : {minlandx}, miy : {minlandy}")
             H_inv =  np.linalg.inv(retval)
-            img_homo = cv2.warpPerspective(gray_image, H_inv, (w, h))
+            img_homo = cv2.warpPerspective(img, H_inv, (w, h))
             img_slice = img_homo[87:202,101:210]
-            face_img_resized = cv2.resize(img_slice, (60, 60))
+            face_img_resized = cv2.resize(img_slice, (224, 224))
 
 
             count+=1
 
             cv2.imwrite(image_filename, face_img_resized)
+            print(f"{count} th picture is saved..")
             
         # FPS 표시
         
         # 화면에 표시
-        cv2.imshow("WEBCAM", gray_image)
+        cv2.imshow("WEBCAM", img)
 
         # 종료 조건
         if cv2.waitKey(1) == 27:
             break
-        if count >= 300: # Take 30 face samples and stop video
+        if count >= 1000: # Take 30 face samples and stop video
              break
 
 # 리소스 해제
