@@ -32,7 +32,7 @@ for label in os.listdir(data_dir):
         # 이미지를 로드하고 크기를 조정합니다. (MobileNet 기본 입력 크기인 224x224로 조정)
         image_raw = cv2.imread(image_path)
         #image = cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY)
-        image_raw = cv2.resize(image_raw, (224, 224))
+        image_raw = cv2.resize(image_raw, (60, 60))
         # 이미지 데이터를 리스트에 추가합니다.
         images.append(image_raw)
         # 레이블을 리스트에 추가합니다.
@@ -78,7 +78,7 @@ datagen = ImageDataGenerator(
 
 
 # 데이터 증강 후 모델 학습
-batch_size = 32
+batch_size = 8
 augmented_train_generator = datagen.flow(train_images, train_labels, batch_size=batch_size)
 
 history = model.fit(
