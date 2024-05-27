@@ -25,7 +25,7 @@ webcam = cv2.VideoCapture(0)
 webcam.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
 webcam.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
 
-model = tf.keras.models.load_model('my_model/model1_mobilenet.keras')
+model = tf.keras.models.load_model('my_model/checkpoint_epoch_50.keras')
 
 # dlib의 얼굴 감지기 초기화
 detector = dlib.get_frontal_face_detector()
