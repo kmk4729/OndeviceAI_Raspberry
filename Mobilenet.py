@@ -6,11 +6,11 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import Callback
 from sklearn.svm import SVC
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from joblib import dump
-
 
 # MobileNetV2를 통해 특징을 추출하는 함수 정의
 def extract_features(model, images):
@@ -18,7 +18,7 @@ def extract_features(model, images):
     return features
 
 # 이미지가 있는 폴더 경로
-data_dir = "testdata"
+data_dir = "224test"
 
 # 이미지와 레이블을 저장할 리스트 초기화
 images = []
@@ -31,7 +31,7 @@ for label in os.listdir(data_dir):
         image_path = os.path.join(label_dir, image_name)
         # 이미지를 로드하고 크기를 조정합니다. (MobileNet 기본 입력 크기인 224x224로 조정)
         image_raw = cv2.imread(image_path)
-        #image = cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY)
+        # image = cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY)
         image_raw = cv2.resize(image_raw, (60, 60))
         # 이미지 데이터를 리스트에 추가합니다.
         images.append(image_raw)
@@ -45,7 +45,6 @@ images = images / 255.0
 
 # 데이터를 학습 및 테스트 세트로 분할합니다.
 train_images, test_images, train_labels, test_labels = train_test_split(images, labels, test_size=0.2, random_state=42)
-#train_images = np.expand_dims(train_images, axis=-1)
 
 # MobileNet을 불러옵니다. include_top=False로 설정하여 분류기를 제외합니다.
 base_model = MobileNetV2(weights=None, include_top=False, input_shape=(60, 60, 3))
@@ -67,25 +66,34 @@ model.compile(optimizer='adam',
 
 # 데이터 증강을 위한 ImageDataGenerator 생성
 datagen = ImageDataGenerator(
-    rotation_range=20,
-    width_shift_range=0.1,
-    height_shift_range=0.1,
-    shear_range=0.2,
-    zoom_range=0.2,
+    rotation_range=10,  # 회전 범위 축소
+    width_shift_range=0.05,  # 가로 이동 범위 축소
+    height_shift_range=0.05,  # 세로 이동 범위 축소
+    shear_range=0.1,  # 전단 범위 축소
+    zoom_range=0.1,  # 줌 범위 축소
     horizontal_flip=True,
     fill_mode='nearest'
 )
 
-
 # 데이터 증강 후 모델 학습
-batch_size = 8
+batch_size = 8  # 배치 크기 줄이기
+steps_per_epoch = np.ceil(train_images.shape[0] / batch_size).astype(int)
 augmented_train_generator = datagen.flow(train_images, train_labels, batch_size=batch_size)
+
+# Custom callback to save the model every 10 epochs
+class CustomSaver(Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        if (epoch + 1) % 10 == 0:
+            self.model.save(f'my_model/checkpoint_epoch_{epoch+1:02d}.keras')
+
+custom_saver = CustomSaver()
 
 history = model.fit(
     augmented_train_generator,
-    steps_per_epoch=train_images.shape[0] // batch_size,
-    epochs=30,
-    validation_data=(test_images, test_labels)
+    steps_per_epoch=steps_per_epoch,
+    epochs=500,
+    validation_data=(test_images, test_labels),
+    callbacks=[custom_saver]
 )
 
 # 모델 평가
@@ -104,9 +112,12 @@ svm_model.fit(train_features.reshape(train_features.shape[0], -1), train_labels)
 test_accuracy = svm_model.score(test_features.reshape(test_features.shape[0], -1), test_labels)
 print("Test Accuracy (SVM):", test_accuracy)
 
-# 모델 저장
-model_path = 'my_model/model1_mobilenet.keras'
+# 최종 모델 저장
+model_path = 'my_model/model1_mobilenet_final.keras'
 model.save(model_path)
 # SVM 모델 저장
 svm_model_path = 'svm_model.joblib'
 dump(svm_model, svm_model_path)
+
+# 학습 세션 종료 후 메모리 해제
+tf.keras.backend.clear_session()
