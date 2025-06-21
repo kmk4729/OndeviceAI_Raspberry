@@ -1,6 +1,7 @@
 # On-device AI 기반 얼굴 인식 회사 출입 카메라
 
 2024.03 ~ 2024.07 Capstone Design Project
+
 2024 소프트웨어종합학술대회(KSC) Poster session 2024.12.20
 
 ## 프로젝트 개요
