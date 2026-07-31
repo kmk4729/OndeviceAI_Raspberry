@@ -1,4 +1,4 @@
-# On-Device AI 기반 실시간 얼굴 인식 시스템 (Capstone Design)
+# On-Device AI 얼굴 인식 시스템 — Pi 실행부 (Capstone Design)
 
 **[2024 소프트웨어종합학술대회(KSC) 포스터 세션 발표]**
 
@@ -7,6 +7,8 @@
 이 프로젝트는 클라우드 서버를 거치지 않고, **Raspberry Pi 4**와 같은 저사양 임베디드 디바이스에서 **실시간 얼굴 인식, 데이터 저장, 모델 학습 및 갱신**까지 모든 과정을 처리하는 '온디바이스 AI' 출입 카메라 시스템입니다.
 
 디바이스 내부에서 독립적으로 모든 연산을 수행함으로써, 빠른 응답 속도와 데이터 프라이버시 보호라는 두 가지 목표를 달성합니다.
+
+이 저장소는 **Pi에서 실행하는 부분**만 담고 있습니다. 모델을 처음부터 학습시키는 PC 학습부는 별도 저장소인 [OndeviceAI_PC](https://github.com/kmk4729/OndeviceAI_PC)에서 관리합니다.
 
 ## ✨ 2. 주요 기능
 
@@ -31,13 +33,6 @@
 
 ```
 .
-├── train/                    # 🎓 PC에서 모델을 학습시키는 스크립트
-│   ├── dlibTraining.py         # SVM 또는 Custom CNN 학습
-│   ├── ResSvm.py                # Dlib 임베딩 추출 + SVM 학습
-│   ├── Mobilenet.py             # MobileNetV2 학습
-│   ├── MobilenetCon.py          # MobileNetV2 구성/학습
-│   └── tflite.py                # 학습된 Keras 모델 → TFLite 변환
-│
 ├── deploy/                   # 📱 Raspberry Pi에서 실행하는 추론/실행 스크립트
 │   ├── multitask.py             # (메인) 인식/학습/저장 멀티태스킹 실행
 │   ├── SvmRecon.py               # Dlib 특징 + SVM 실시간 인식
@@ -49,17 +44,16 @@
 │   ├── dlibDetection.py, dlibAdvFarming.py, landmark.py, landpoint.py
 │   └── hogcnn.py, Bfmatcher.py, jpgread.py, webcamFrame.py
 │
-├── custom_model/              # ✍️ 사용자 직접 모델 설계 공간 (기존 스크립트와 분리)
+├── dataset/, 224test/, testdata/   # 🖼️ 온디바이스 학습/테스트용 이미지 (.gitignore 처리, 로컬 전용)
+├── my_model/                        # 💾 모델 저장 폴더 — PC 학습부에서 넘어온 초기 모델 + 온디바이스 재학습 결과 (.gitignore 처리, 로컬 전용)
 │
-├── dataset/, 224test/, testdata/   # 🖼️ 학습/테스트용 이미지 (.gitignore 처리, 로컬 전용)
-├── my_model/                        # 💾 학습된 모델 저장 폴더 (.gitignore 처리, 로컬 전용)
-│
-├── requirements-pc.txt        # PC 학습 환경 의존성
-├── requirements-pi.txt        # Pi 배포 환경 의존성 (tflite-runtime 등 경량 구성)
+├── requirements.txt           # Pi 배포 환경 의존성 (tflite-runtime 등 경량 구성)
 └── README.md
 ```
 
 > `dataset/`, `my_model/`, `*.joblib`, `*.dat` 등은 용량이 커서 `.gitignore`로 추적을 제외했습니다. 각 스크립트는 **프로젝트 루트에서 실행**하는 것을 전제로 상대경로(`dataset/...`, `my_model/...`, `count.txt`)를 사용하므로, `deploy/multitask.py`처럼 하위 폴더로 옮겨진 스크립트도 반드시 루트 디렉터리에서 실행해야 합니다.
+>
+> 모델을 처음부터 학습시키는 스크립트(`train/`, `custom_model/`)는 [OndeviceAI_PC](https://github.com/kmk4729/OndeviceAI_PC) 저장소에 있습니다. 그쪽에서 학습 후 `.tflite`로 변환한 파일을 이 저장소의 `my_model/`에 복사해서 사용하세요.
 
 ## ⚙️ 5. 설치 및 실행 방법
 
@@ -73,11 +67,7 @@ sudo apt-get update
 sudo apt-get install -y build-essential cmake
 sudo apt-get install -y python3-opencv python3-pip
 
-# PC에서 모델을 학습할 경우
-pip3 install -r requirements-pc.txt
-
-# Raspberry Pi에서 추론만 실행할 경우
-pip3 install -r requirements-pi.txt
+pip3 install -r requirements.txt
 ```
 
 ### 실행
