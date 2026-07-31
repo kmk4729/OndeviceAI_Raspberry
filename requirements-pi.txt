@@ -1,0 +1,9 @@
+# Raspberry Pi(ARM)에서 추론만 수행할 때 사용하는 의존성.
+# 풀 tensorflow 대신 tflite-runtime을 사용해 설치 용량/메모리를 줄인다.
+# dlib은 Pi에서 소스 빌드가 오래 걸리므로 piwheels(https://www.piwheels.org) 사용을 권장.
+numpy
+opencv-python
+dlib
+scikit-learn
+tflite-runtime
+joblib

@@ -18,31 +18,50 @@
 *   **온디바이스 학습 및 업데이트**: 새로운 사용자가 등록되면, 디바이스가 스스로 데이터셋을 구축하고 비동기적으로 모델을 재학습하여 즉시 시스템에 반영합니다.
 *   **멀티태스킹 아키텍처**: `실시간 인식`, `데이터 저장`, `모델 학습`의 무거운 작업들이 서로 방해하지 않고 동시에 실행될 수 있도록 설계되었습니다.
 
-## 📂 3. 프로젝트 구조 및 핵심 파일
+## 🛠️ 3. 사용 기술
+
+- Python
+- OpenCV
+- Dlib
+- Scikit-learn (SVM)
+- TensorFlow / TensorFlow Lite (Custom CNN, MobileNetV2)
+- Raspberry Pi 4 (쿼드코어 CPU, 4GB RAM)
+
+## 📂 4. 프로젝트 구조
 
 ```
 .
-├── multitask.py             # 🔄 (메인) 인식/학습/저장 멀티태스킹 실행
-├── SvmRecon.py               # 🤖 (인식) Dlib 특징 + SVM으로 실시간 인식
-├── dlibRecognition.py        # 🧠 (인식) 직접 학습한 Keras CNN 모델로 실시간 인식
-├── MobileRecon.py            # 📱 (인식) MobileNet 모델으로 실시간 인식
+├── train/                    # 🎓 PC에서 모델을 학습시키는 스크립트
+│   ├── dlibTraining.py         # SVM 또는 Custom CNN 학습
+│   ├── ResSvm.py                # Dlib 임베딩 추출 + SVM 학습
+│   ├── Mobilenet.py             # MobileNetV2 학습
+│   ├── MobilenetCon.py          # MobileNetV2 구성/학습
+│   └── tflite.py                # 학습된 Keras 모델 → TFLite 변환
 │
-├── dlibTraining.py           # 🎓 (학습) SVM 또는 Custom CNN 모델 학습
-├── Mobilenet.py              # 🏗️ (학습) MobileNet 모델 학습 및 구축
+├── deploy/                   # 📱 Raspberry Pi에서 실행하는 추론/실행 스크립트
+│   ├── multitask.py             # (메인) 인식/학습/저장 멀티태스킹 실행
+│   ├── SvmRecon.py               # Dlib 특징 + SVM 실시간 인식
+│   ├── dlibRecognition.py        # Custom CNN 실시간 인식
+│   ├── dlibRecog_Lite.py         # 경량화 버전 실시간 인식
+│   └── MobileRecon.py            # MobileNetV2 실시간 인식
 │
-├── svm_model.joblib          # 💾 (모델) 학습된 SVM 분류기
-├── my_model/                 # 📂 (모델) Keras/TensorFlow로 학습된 모델 저장 폴더
-│   └── model1.keras
-│   └── checkpoint_epoch_...
+├── utils/                    # 🔧 얼굴 검출/랜드마크/벤치마크용 보조 스크립트
+│   ├── dlibDetection.py, dlibAdvFarming.py, landmark.py, landpoint.py
+│   └── hogcnn.py, Bfmatcher.py, jpgread.py, webcamFrame.py
 │
-├── dataset/                  # 🖼️ (데이터) 모델 학습용 얼굴 이미지
-│   ├── 0/
-│   └── 1/
+├── custom_model/              # ✍️ 사용자 직접 모델 설계 공간 (기존 스크립트와 분리)
 │
-└── README.md                 # 📄 본 문서
+├── dataset/, 224test/, testdata/   # 🖼️ 학습/테스트용 이미지 (.gitignore 처리, 로컬 전용)
+├── my_model/                        # 💾 학습된 모델 저장 폴더 (.gitignore 처리, 로컬 전용)
+│
+├── requirements-pc.txt        # PC 학습 환경 의존성
+├── requirements-pi.txt        # Pi 배포 환경 의존성 (tflite-runtime 등 경량 구성)
+└── README.md
 ```
 
-## ⚙️ 4. 설치 및 실행 방법
+> `dataset/`, `my_model/`, `*.joblib`, `*.dat` 등은 용량이 커서 `.gitignore`로 추적을 제외했습니다. 각 스크립트는 **프로젝트 루트에서 실행**하는 것을 전제로 상대경로(`dataset/...`, `my_model/...`, `count.txt`)를 사용하므로, `deploy/multitask.py`처럼 하위 폴더로 옮겨진 스크립트도 반드시 루트 디렉터리에서 실행해야 합니다.
+
+## ⚙️ 5. 설치 및 실행 방법
 
 ### 의존성 설치
 
@@ -54,8 +73,11 @@ sudo apt-get update
 sudo apt-get install -y build-essential cmake
 sudo apt-get install -y python3-opencv python3-pip
 
-# Python 라이브러리 설치
-pip3 install numpy dlib scikit-learn tensorflow
+# PC에서 모델을 학습할 경우
+pip3 install -r requirements-pc.txt
+
+# Raspberry Pi에서 추론만 실행할 경우
+pip3 install -r requirements-pi.txt
 ```
 
 ### 실행
@@ -66,20 +88,20 @@ pip3 install numpy dlib scikit-learn tensorflow
     cd OndeviceAI_Raspberry
     ```
 
-2.  **메인 시스템 실행**
+2.  **메인 시스템 실행** (프로젝트 루트에서 실행)
     *   모든 기능(인식, 학습, 업데이트)을 동시에 실행합니다.
     ```bash
-    python3 multitask.py
+    python3 deploy/multitask.py
     ```
 
-3.  **개별 인식 모델 테스트**
+3.  **개별 인식 모델 테스트** (프로젝트 루트에서 실행)
     *   특정 모델의 인식 기능만 독립적으로 테스트해볼 수 있습니다.
     ```bash
-    python3 SvmRecon.py       # SVM 기반 인식 테스트
-    # python3 dlibRecognition.py  # Custom CNN 기반 인식 테스트
+    python3 deploy/SvmRecon.py         # SVM 기반 인식 테스트
+    # python3 deploy/dlibRecognition.py  # Custom CNN 기반 인식 테스트
     ```
 
-## 🚀 5. 기대 효과 및 향후 개선 방향
+## 🚀 6. 기대 효과 및 향후 개선 방향
 
 ### 기대 효과
 *   **보안성 및 프라이버시 강화**: 민감한 얼굴 정보가 외부 서버로 전송되지 않습니다.
@@ -90,63 +112,8 @@ pip3 install numpy dlib scikit-learn tensorflow
 *   **고성능 탐지 모델 적용**: YOLOv5/v7 등 최신 객체 탐지 모델을 경량화하여 적용.
 *   **다양한 각도/자세 인식**: 측면, 후면 등 비정형적인 자세에서도 인물 인식이 가능하도록 모델 개선.
 *   **통합 관제 시스템**: 서버, Web/App, DB와 연동하여 다수의 디바이스를 원격으로 관리하고, 도난 감지 등 지능형 서비스를 구축.
-=======
-# On-device AI 기반 얼굴 인식 회사 출입 카메라
 
-## 프로젝트 개요
-이 프로젝트는 클라우드 서버를 거치지 않고, Raspberry Pi 4와 같은 저사양 임베디드 디바이스에서 실시간 얼굴 인식과 학습, 모델 갱신까지 모두 처리하는 AI 기반 출입 카메라 시스템입니다.  
-디바이스 내부에서 얼굴 데이터를 저장하고, 비동기적으로 학습을 진행하며, 갱신된 모델을 즉시 적용하여 실시간성과 보안성을 모두 확보합니다.
-
-## 주요 기능
-- 실시간 얼굴 인식 및 검출 (Haar Cascade, Dlib HOG, Dlib 68 Landmark)
-- 신규 사용자 얼굴 데이터 저장 및 비동기 학습
-- SVM 및 MobilenetV2 기반 얼굴 인식 모델 구현
-- Multi-tasking 구조로 데이터 저장, 학습, 모델 갱신 동시 처리
-- 리소스가 제한된 Raspberry Pi 4 환경에 최적화
-
-## 사용 기술
-- Python
-- OpenCV
-- Dlib
-- Scikit-learn (SVM)
-- TensorFlow Lite (MobilenetV2)
-- Raspberry Pi 4 (쿼드코어 CPU, 4GB RAM)
-
-## 시스템 구성 및 동작 흐름
-1. **얼굴 인식**: Haar Cascade, Dlib HOG 알고리즘으로 얼굴 검출
-2. **특징 추출**: Dlib 68 Landmark로 얼굴 특징점 추출
-3. **데이터 저장**: 얼굴 특징 좌표를 저장하여 학습 데이터 구성
-4. **학습**: SVM과 MobilenetV2 모델을 사용하여 얼굴 인식 모델 학습
-5. **모델 갱신**: 비동기적으로 학습된 모델을 디바이스에 적용
-
-## 설치 및 실행 방법
-1. Raspberry Pi 4에 필요한 라이브러리 설치
-    ```
-    sudo apt-get update
-    sudo apt-get install python3-opencv python3-pip
-    pip3 install dlib scikit-learn tensorflow
-    ```
-2. 프로젝트 소스코드 클론
-    ```
-    git clone https://github.com/kmk4729/OndeviceAI_Raspberry.git
-    cd OndeviceAI_Raspberry
-    ```
-3. 실행
-    ```
-    python3 main.py
-    ```
-
-## 기대 효과
-- 외부 서버 없이도 실시간 얼굴 인식 및 출입 관리 가능
-- CCTV, 사원증 NFC 태그 등 다양한 신호와 연동 가능
-- 보안성 강화 및 다양한 IoT 환경에 적용 가능
-
-## 향후 개선 방향
-- YOLOv5 기반 직접 학습 가능한 영상처리 모델 개발
-- 측면 및 후면 얼굴 인식 기능 추가
-- 서버 및 Web/App/DB와 연동한 딥러닝 기반 실시간 도난 방지 시스템 구축
-
-## 참고 문헌
+## 📚 참고 문헌
 - Sandler, M., Howard, A., Zhu, M., Zhmoginov, A., & Chen, L.-C. (2019). MobileNetV2: Inverted Residuals and Linear Bottlenecks. Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition.
 - King, D. E. (2009). Dlib-ml: A Machine Learning Toolkit. Journal of Machine Learning Research, 10, 1755-1758.
 

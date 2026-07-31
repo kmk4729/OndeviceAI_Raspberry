@@ -1,0 +1,20 @@
+# 대용량 데이터셋/모델 아티팩트 — Pi에 git clone 부담을 주지 않기 위해 추적하지 않음.
+# 각 디바이스/개발 환경에서 직접 생성하거나 별도 채널(Git LFS, 외부 스토리지 등)로 배포할 것.
+dataset/
+224test/
+testdata/
+my_model/
+*.joblib
+*.dat
+
+# 학습/실행 중 생성되는 상태 파일 (디바이스별로 달라짐, 커밋 대상 아님)
+count.txt
+count1.txt
+land0.txt
+output_image.png
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
